@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Communicating App(Phone)</string>
+    <string name="msg_hint">Enter your message</string>
+    <string name="send">Send</string>
+    <string name="connect">Connect</string>
+
+    <string name="wearable_device_is_connected">Wearable device is connected</string>
+</resources>

@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Communicate App(Watch)</string>
+    <string name="msg_hint">Enter your message</string>
+    <string name="send">Send</string>
+    <string name="connect">Connect</string>
+    <string name="message_log">Message log</string>
+
+    <string name="mobile_device_is_connected">Mobile device not paired</string>
+    <string name="mobile_message">Mobile message</string>
+    <string name="phone_message">Phone Message</string>
+    <string name="message">Message Content</string>
+    <string name="init">...</string>
+    <string name="send_message_to_phone">Send Message to Phone</string>
+    <string name="home">Users</string>
+    <string name="view_accounts">View Accounts</string>
+</resources>
