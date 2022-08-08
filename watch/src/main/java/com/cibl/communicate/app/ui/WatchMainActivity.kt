@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.ViewModelProvider
 import androidx.wear.ambient.AmbientModeSupport
 import androidx.wear.widget.WearableLinearLayoutManager
@@ -17,6 +18,7 @@ import com.cibl.communicate.app.viewModels.HomeViewModel
 import com.cibl.communicate.app.viewModels.HomeViewModelFactory
 import com.google.android.gms.wearable.*
 import com.orhanobut.logger.AndroidLogAdapter
+import com.orhanobut.logger.BuildConfig
 import com.orhanobut.logger.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
@@ -34,12 +36,19 @@ class WatchMainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     private var eventId = -1
     private lateinit var homeAdapter: HomeRecyclerviewAdapter
 
+    companion object{
+        const val ACCOUNT_LIST_REQUEST_CODE = 1001
+    }
     private lateinit var ambientController: AmbientModeSupport.AmbientController
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Logger.addLogAdapter(AndroidLogAdapter())
-        binding = ActivityWatchMainBinding.inflate(layoutInflater)
+        Logger.addLogAdapter(object : AndroidLogAdapter() {
+            override fun isLoggable(priority: Int, tag: String?): Boolean {
+                return BuildConfig.DEBUG
+            }
+        })
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_watch_main)
         val factory = HomeViewModelFactory()
         viewModel = ViewModelProvider(this, factory).get(HomeViewModel::class.java)
         setContentView(binding.root)
@@ -85,10 +94,9 @@ class WatchMainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
     }
     private fun listItemCLicked(item: HomeListItem){
         val intent = Intent()
-        Logger.d(item.id)
         intent.putExtra("event3", item.id)
-        setResult(RESULT_OK, intent)
-        finish()
+        setResult(ACCOUNT_LIST_REQUEST_CODE, intent)
+        this.onBackPressed()
     }
 
 

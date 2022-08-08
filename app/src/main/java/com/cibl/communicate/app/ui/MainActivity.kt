@@ -9,10 +9,14 @@ import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.databinding.DataBindingUtil
+import com.cibl.communicate.app.R
 import com.cibl.communicate.app.databinding.ActivityMainBinding
 import com.cibl.communicate.app.models.AccountDetailsModel
+import com.cibl.communicate.app.models.HomeListItem
 import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.*
+import com.google.gson.Gson
 import com.orhanobut.logger.AndroidLogAdapter
 import com.orhanobut.logger.BuildConfig
 import com.orhanobut.logger.Logger
@@ -44,6 +48,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope(),
     private lateinit var binding: ActivityMainBinding
     private var currentEvent: String = ""
     private lateinit var payload: ByteArray
+    private val accountList = ArrayList<HomeListItem>()
 
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,9 +58,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope(),
                 return BuildConfig.DEBUG
             }
         })
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        val view = binding.root
-        setContentView(view)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
 
         activityContext = this
         wearableDeviceConnected = false
@@ -67,40 +70,41 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope(),
         }
     }
 
+    private fun getAccountList(): String {
+        accountList.clear()
+        for (i in 0 until 10){
+            val randomAcNumber =(0..100).random()
+            val homeListItem = HomeListItem(acId = i, acNumber = randomAcNumber.toString())
+            accountList.add(homeListItem)
+        }
+        val gson = Gson()
+        return gson.toJson(accountList).toString()
+    }
+
+    private fun getAccountDetailsList(): List<AccountDetailsModel> {
+        val array = ArrayList<AccountDetailsModel>()
+        for (i in 0 until accountList.size){
+            val randomBalance =(0..100).random()
+            val accountDetails = AccountDetailsModel(id = accountList[i].acId, name = "Bangladesh" , number = accountList[i].acNumber.toInt(), status = "Open",  balance = randomBalance)
+            array.add(accountDetails)
+        }
+       return array
+    }
+
     private fun sendMessage() {
-        Log.d("WORKING_FLOW", "sendMessage: $currentEvent")
         if (wearableDeviceConnected) {
             var data: String = ""
-            val accounts = "[\n" +
-                    "   {\n" +
-                    "      \"acNumber\": \"1041100099486\",\n" +
-                    "      \"acId\": 30\n" +
-                    "   }, \n" +
-                    "   {\n" +
-                    "      \"acNumber\": \"1041100099486\",\n" +
-                    "      \"acId\": 31\n" +
-                    "   },\n" +
-                    "   {\n" +
-                    "      \"acNumber\": \"1041100088486\",\n" +
-                    "      \"acId\": 32\n" +
-                    "   }" +
-                    "]"
-            val accountDetailsData = "{\n" +
-                    "      \"acNumber\": 1041100099486,\n" +
-                    "       \"acName\": \"Md Shofiulla\",\n" +
-                    "       \"acBalance\": 100000,\n" +
-                    "       \"acStatus\": \"Open\",\n" +
-                    "      \"acId\": 30\n" +
-                    "   }"
             val nodeId: String = messageEvent?.sourceNodeId!!
             // Set the data of the message to be the bytes of the Uri.
-            data = if (currentEvent == "accounts"){
-                accounts
-            }else {
-                accountDetailsData
+            data = if (currentEvent == "accounts") {
+                getAccountList()
+            } else {
+                val requestedDetails =
+                    getAccountDetailsList().single { s -> s.id == currentEvent.toInt() }
+                val gson = Gson()
+                gson.toJson(requestedDetails).toString()
             }
 
-            Log.d("AFTER_GETTING", "sendMessage: $data")
 
             val payload =
                 data.toByteArray()
@@ -125,6 +129,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope(),
                     Log.d("send1", "Message failed.")
                 }
             }
+        } else {
+            Toast.makeText(this, "Not connected", Toast.LENGTH_SHORT).show()
         }
     }
 

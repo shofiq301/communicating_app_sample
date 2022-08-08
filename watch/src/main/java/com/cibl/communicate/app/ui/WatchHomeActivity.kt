@@ -1,14 +1,22 @@
 package com.cibl.communicate.app.ui
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Toast
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.ActivityResultCallback
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.appcompat.app.AppCompatActivity
+import androidx.databinding.DataBindingUtil
 import androidx.wear.ambient.AmbientModeSupport
+import com.cibl.communicate.app.R
 import com.cibl.communicate.app.databinding.ActivityWatchHomeBinding
 import com.google.android.gms.wearable.*
 import com.orhanobut.logger.AndroidLogAdapter
@@ -17,6 +25,7 @@ import com.orhanobut.logger.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import java.nio.charset.StandardCharsets
+
 
 class WatchHomeActivity : AppCompatActivity(), CoroutineScope by MainScope(),
     AmbientModeSupport.AmbientCallbackProvider,
@@ -45,11 +54,27 @@ class WatchHomeActivity : AppCompatActivity(), CoroutineScope by MainScope(),
     private var mobileNodeUri: String? = null
     private var event1 = "accounts"
     private var event2 = "cards"
+    private var currentEvent = ""
     private var eventId = 1
     companion object {
         const val ACCOUNT_LIST_REQUEST_CODE = 1001
     }
     private lateinit var ambientController: AmbientModeSupport.AmbientController
+
+    private var activityLauncher: ActivityResultLauncher<Intent> = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+        ActivityResultCallback {
+            val data = it.data
+            when (it.resultCode) {
+                ACCOUNT_LIST_REQUEST_CODE -> {
+                    val accId = it.data!!.getIntExtra("event3", -1)
+                    eventId = 2
+                    currentEvent = accId.toString()
+                    requestEvent(currentEvent)
+                }
+            }
+        }
+    )
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,8 +84,7 @@ class WatchHomeActivity : AppCompatActivity(), CoroutineScope by MainScope(),
                 return BuildConfig.DEBUG
             }
         })
-        binding = ActivityWatchHomeBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        binding = DataBindingUtil.setContentView(this, R.layout.activity_watch_home)
 
         activityContext = this
 
@@ -77,11 +101,13 @@ class WatchHomeActivity : AppCompatActivity(), CoroutineScope by MainScope(),
 
         binding.btnAcList.setOnClickListener {
             eventId = 1
-            requestEvent(event1)
+            currentEvent = event1
+            requestEvent(currentEvent)
         }
         binding.btnCardList.setOnClickListener {
             eventId = 2
-            requestEvent(event2)
+            currentEvent = event2
+            requestEvent(currentEvent)
         }
     }
 
@@ -99,16 +125,10 @@ class WatchHomeActivity : AppCompatActivity(), CoroutineScope by MainScope(),
                 .sendMessage(nodeId, MESSAGE_ITEM_RECEIVED_PATH, payload)
         sendMessageTask.addOnCompleteListener {
             if (it.isSuccessful) {
-                Log.d("send1", "Message sent successfully")
-                val sbTemp = StringBuilder()
-                sbTemp.append("\n")
-                sbTemp.append(event)
-                sbTemp.append(" (Sent to mobile)")
-                Log.d("receive1", " $sbTemp")
                 binding.txtConnect.visibility = View.GONE
                 binding.homeContent.visibility = View.VISIBLE
             } else {
-                Log.d("send1", "Message failed.")
+                Logger.d("Message failed.")
             }
         }
     }
@@ -118,19 +138,8 @@ class WatchHomeActivity : AppCompatActivity(), CoroutineScope by MainScope(),
 
     override fun onMessageReceived(p0: MessageEvent) {
         try {
-            Log.d(TAG_MESSAGE_RECEIVED, "onMessageReceived event received")
             val s1 = String(p0.data, StandardCharsets.UTF_8)
             val messageEventPath: String = p0.path
-
-            Log.d(
-                TAG_MESSAGE_RECEIVED,
-                "onMessageReceived() A message from watch was received:"
-                        + p0.requestId
-                        + " "
-                        + messageEventPath
-                        + " "
-                        + s1
-            )
 
             //Send back a message back to the source node
             //This acknowledges that the receiver activity is open
@@ -150,10 +159,7 @@ class WatchHomeActivity : AppCompatActivity(), CoroutineScope by MainScope(),
                         Wearable.getMessageClient(activityContext!!)
                             .sendMessage(nodeId, APP_OPEN_WEARABLE_PAYLOAD_PATH, payload)
 
-                    Log.d(
-                        TAG_MESSAGE_RECEIVED,
-                        "Acknowledgement message successfully with payload : $returnPayloadAck"
-                    )
+
 
                     messageEvent = p0
                     mobileNodeUri = p0.sourceNodeId
@@ -161,35 +167,39 @@ class WatchHomeActivity : AppCompatActivity(), CoroutineScope by MainScope(),
                     sendMessageTask.addOnCompleteListener {
                         if (it.isSuccessful) {
                             requestEvent(event1)
-                        } else {
-                            Log.d(TAG_MESSAGE_RECEIVED, "Message failed.")
                         }
                     }
                 } catch (e: Exception) {
-                    Log.d(
-                        TAG_MESSAGE_RECEIVED,
+                    e.printStackTrace()
+                    Logger.d(
                         "Handled in sending message back to the sending node"
                     )
-                    e.printStackTrace()
                 }
             }//emd of if
             else if (messageEventPath.isNotEmpty() && messageEventPath == MESSAGE_ITEM_RECEIVED_PATH) {
-                if (event1 == "accounts") {
-                    startActivityForResult(
-                        Intent(this, WatchMainActivity::class.java)
-                            .putExtra("event", s1)
-                            .putExtra("eventTitle","Account list")
-                            .putExtra("eventId", eventId)
-                        , ACCOUNT_LIST_REQUEST_CODE)
+                val intent: Intent
+                if (currentEvent == "accounts") {
+                   intent =  Intent(this, WatchMainActivity::class.java)
+                        .putExtra("event", s1)
+                        .putExtra("eventTitle","Account list")
+                        .putExtra("eventId", eventId)
+                    currentEvent = ""
+                   activityLauncher.launch(intent)
                 }else {
-                    Logger.d(s1)
+                    Toast.makeText(this, s1, Toast.LENGTH_SHORT).show()
+                    intent =  Intent(this, AccountDetailsActivity::class.java)
+                        .putExtra("details", s1)
+                    currentEvent = ""
+                    activityLauncher.launch(intent)
                 }
             }
         } catch (e: Exception) {
-            Log.d(TAG_MESSAGE_RECEIVED, "Handled in onMessageReceived")
+            Logger.d("Handled in onMessageReceived")
             e.printStackTrace()
         }
     }
+
+
 
     override fun onCapabilityChanged(p0: CapabilityInfo) {
     }
@@ -231,18 +241,6 @@ class WatchHomeActivity : AppCompatActivity(), CoroutineScope by MainScope(),
 
         override fun onExitAmbient() {
             super.onExitAmbient()
-        }
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == ACCOUNT_LIST_REQUEST_CODE) {
-            if (resultCode == Activity.RESULT_OK) {
-                val accId = data!!.getIntExtra("event3", -1)
-               requestEvent(accId.toString())
-            }
-        } else {
-            super.onActivityResult(requestCode, resultCode, data)
         }
     }
 }

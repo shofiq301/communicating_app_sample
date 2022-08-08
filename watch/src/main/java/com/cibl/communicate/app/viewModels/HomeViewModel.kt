@@ -8,10 +8,7 @@ import com.cibl.communicate.app.models.HomeListItem
 import org.json.JSONArray
 
 class HomeViewModel: ViewModel(){
-    lateinit var homeListItems: MutableLiveData<List<HomeListItem>>
-    init {
-        homeListItems = MutableLiveData()
-    }
+    var homeListItems: MutableLiveData<List<HomeListItem>> = MutableLiveData()
 
     fun getCurrentData(): LiveData<List<HomeListItem>>{
         return  homeListItems

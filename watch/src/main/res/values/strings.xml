@@ -13,4 +13,9 @@
     <string name="send_message_to_phone">Send Message to Phone</string>
     <string name="home">Users</string>
     <string name="view_accounts">View Accounts</string>
+
+    <string name="account_id_text">Account number: %d</string>
+    <string name="account_name_text">Account name: %s</string>
+    <string name="account_balance_text">Account balance: %d</string>
+    <string name="account_status_text">Account status: %s</string>
 </resources>
